@@ -1,17 +1,19 @@
+#![feature(test)]
+
+extern crate test;
+
 fn main() {
-    let num_rings = 50;
+    let num_rings = 30;
 
     let mut game = Game::new(num_rings);
 
-    let mut solver = Solver {
-        num_rings,
-    };
+    let mut solver = Solver::new(num_rings);
 
-    let moves = solver.solve();
+    solver.solve();
 
-    println!("{:#?}", &moves);
+    //println!("{:#?}", &solver.moves);
 
-    for m in &moves {
+    for m in &solver.moves {
         game.move_ring(&m);
     }
 
@@ -103,18 +105,26 @@ impl HanoiMove {
 
 pub struct Solver {
     num_rings: usize,
+    pub moves: Vec<HanoiMove>,
 }
 
 impl Solver {
-    pub fn solve(&mut self) -> Vec<HanoiMove> {
+    fn new(num_rings: usize) -> Solver {
+        Solver {
+            num_rings,
+            moves: Vec::new(),
+        }
+    }
+
+    pub fn solve(&mut self) {
         self.move_ring(
             self.num_rings,
             &Tower::First,
             &Tower::Third,
-            &Tower::Second)
+            &Tower::Second);
     }
 
-    pub fn move_ring(&mut self, ring_number: usize, from: &Tower, to: &Tower, aux: &Tower) -> Vec<HanoiMove> {
+    pub fn move_ring(&mut self, ring_number: usize, from: &Tower, to: &Tower, aux: &Tower) {
         let current_move = HanoiMove {
             ring: ring_number,
             from: from.clone(),
@@ -122,18 +132,33 @@ impl Solver {
         };
 
         if ring_number <= 1 {
-            return vec![current_move];
+            self.moves.push(current_move);
+            return;
         }
 
-        let mut moves = Vec::new();
+        self.move_ring(ring_number - 1, from, aux, to);
+        self.moves.push(current_move);
+        self.move_ring(ring_number - 1, aux, to, from);
+    }
+}
 
-        let mut pre_moves = self.move_ring(ring_number - 1, from, aux, to);
-        let mut post_moves = self.move_ring(ring_number - 1, aux, to, from);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use test::Bencher;
 
-        moves.append(&mut pre_moves);
-        moves.push(current_move);
-        moves.append(&mut post_moves);
+    // 87.34 s
+    #[bench]
+    fn bench_30_rings(b: &mut Bencher) {
+        let num_rings = 30;
 
-        moves
+        let mut game = Game::new(num_rings);
+        let mut solver = Solver::new(num_rings);
+
+        solver.solve();
+
+        for m in &solver.moves {
+            game.move_ring(&m);
+        }
     }
 }
